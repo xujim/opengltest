@@ -218,7 +218,7 @@
 			name = matrixModelViewTests;
 			productName = matrixModelViewTests;
 			productReference = E4B76E69153DD4B4002CD4A9 /* matrixModelViewTests.octest */;
-			productType = "com.apple.product-type.bundle";
+			productType = "com.apple.product-type.bundle.ocunit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -226,6 +226,7 @@
 		E4B76E3F153DD4B3002CD4A9 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastTestingUpgradeCheck = 0720;
 				LastUpgradeCheck = 0420;
 			};
 			buildConfigurationList = E4B76E42153DD4B3002CD4A9 /* Build configuration list for PBXProject "matrixModelView" */;
@@ -415,6 +416,7 @@
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 				SHARED_PRECOMPS_DIR = build;
 				WRAPPER_EXTENSION = app;
 			};
@@ -430,6 +432,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 				SHARED_PRECOMPS_DIR = build;
 				WRAPPER_EXTENSION = app;
 			};
