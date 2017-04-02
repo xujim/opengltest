@@ -84,6 +84,7 @@ private:
     void setOrthoFrustum(float l, float r, float b, float t, float n=-1, float f=1);
     void updateModelMatrix();
     void updateViewMatrix();
+    void update3rdViewMatrix();
 
     // members
     int windowWidth;
@@ -109,5 +110,7 @@ private:
     Matrix4 matrixModel;
     Matrix4 matrixModelView;
     Matrix4 matrixProjection;
+    
+    Matrix4 matrix3rdView;
 };
 #endif

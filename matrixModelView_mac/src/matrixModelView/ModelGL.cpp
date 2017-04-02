@@ -32,8 +32,8 @@ const float DEG2RAD = 3.141593f / 180;
 const float FOV_Y = 60.0f;              // vertical FOV in degree
 const float NEAR_PLANE = 1.0f;
 const float FAR_PLANE = 100.0f;
-const float CAMERA_ANGLE_X = 45.0f;     // pitch in degree
-const float CAMERA_ANGLE_Y = -45.0f;    // heading in degree
+const float CAMERA_ANGLE_X = .0f;     // pitch in degree
+const float CAMERA_ANGLE_Y = .0f;    // heading in degree
 const float CAMERA_DISTANCE = 25.0f;    // camera distance
 
 
@@ -56,6 +56,8 @@ ModelGL::ModelGL() : windowWidth(0), windowHeight(0),
     matrixModel.identity();
     matrixModelView.identity();
     matrixProjection.identity();
+    matrix3rdView.identity();
+    update3rdViewMatrix();
 }
 
 
@@ -239,6 +241,8 @@ void ModelGL::setViewportSub(int x, int y, int width, int height, float nearPlan
 ///////////////////////////////////////////////////////////////////////////////
 void ModelGL::draw()
 {
+//    update3rdViewMatrix();
+    
     drawSub1();
     drawSub2();
 
@@ -298,22 +302,28 @@ void ModelGL::drawSub1()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     glPushMatrix();
+    //当前矩阵是view坐标系
 
+    //摄像机的矩阵
     // set view matrix ========================================================
     // copy the matrix to OpenGL GL_MODELVIEW matrix
     // Note that OpenGL uses column-major matrix, so transpose the matrix first
     // See updateViewMatrix() how matrixView is constructed. The equivalent
     // OpenGL calls are;
-    //    glLoadIdentity();
-    //    glRotatef(-cameraAngle[2], 0, 0, 1); // roll
-    //    glRotatef(-cameraAngle[1], 0, 1, 0); // heading
-    //    glRotatef(-cameraAngle[0], 1, 0, 0); // pitch
-    //    glTranslatef(-cameraPosition[0], -cameraPosition[1], -cameraPosition[2]);
-    glLoadMatrixf(matrixView.getTranspose());
+        glLoadIdentity();
+        glRotatef(-cameraAngle[2], 0, 0, 1); // roll
+        glRotatef(-cameraAngle[1], 0, 1, 0); // heading
+        glRotatef(-cameraAngle[0], 1, 0, 0); // pitch
+        glTranslatef(-cameraPosition[0], -cameraPosition[1], -cameraPosition[2]);
+//    glLoadMatrixf(matrixView.getTranspose());
 
+    //
     // always draw the grid at the origin (before any modeling transform)
     drawGrid(10, 1);
 
+    //但物体还是需要在自己的坐标系里绘制
+    //但有个问题：如果物体在世界坐标系中是有坐标的，那这种做法如何能取得其在世界坐标戏中的映射？比如知道物体的世界坐标系，如何取？
+    //思考：一般三维物体肯定是根据模型坐标系构建，其会有额外的世界坐标。比如游戏中node添加到scene中就会有world coord
     // transform objects ======================================================
     // From now, all transform will be for modeling matrix only.
     // (from object space to world space)
@@ -324,12 +334,14 @@ void ModelGL::drawSub1()
     //    glRotatef(modelAngle[0], 1, 0, 0);
     //    glRotatef(modelAngle[1], 0, 1, 0);
     //    glRotatef(modelAngle[2], 0, 0, 1);
-
+//以上是模型坐标系变换到世界坐标系
+    
     // compute GL_MODELVIEW matrix by multiplying matrixView and matrixModel
     // before drawing the object:
     // ModelView_M = View_M * Model_M
     // This modelview matrix transforms the objects from object space to eye space.
     // copy modelview matrix to OpenGL after transpose
+//    先从模型坐标系转换到世界坐标系，然后从世界坐标系转换到视点坐标系
     glLoadMatrixf(matrixModelView.getTranspose());
 
     // draw a teapot after ModelView transform
@@ -357,33 +369,55 @@ void ModelGL::drawSub2()
 
     glPushMatrix();
 
+    //因为转动角度是鼠标拖放的逆方向，所以此处不需要为负
     // First, transform the camera (viewing matrix) from world space to eye space
-    glTranslatef(0, 0, -cameraDistance);
-    glRotatef(cameraAngleX, 1, 0, 0); // pitch
-    glRotatef(cameraAngleY, 0, 1, 0); // heading
+//    glTranslatef(0, 0, -cameraDistance);
+//    glRotatef(cameraAngleY, 0, 1, 0); // heading
+//    glRotatef(cameraAngleX, 1, 0, 0); // pitch
+    glLoadMatrixf(matrix3rdView.getTranspose());//从世界坐标系切到视点坐标系
 
     // draw grid
     drawGrid(10, 1);
 
     // draw a teapot
-    glPushMatrix();
-    glTranslatef(modelPosition[0], modelPosition[1], modelPosition[2]);
-    glRotatef(modelAngle[0], 1, 0, 0);
-    glRotatef(modelAngle[1], 0, 1, 0);
-    glRotatef(modelAngle[2], 0, 0, 1);
+//    glPushMatrix();
+//    glTranslatef(modelPosition[0], modelPosition[1], modelPosition[2]);
+//    glRotatef(modelAngle[0], 1, 0, 0);
+//    glRotatef(modelAngle[1], 0, 1, 0);
+//    glRotatef(modelAngle[2], 0, 0, 1);
+//    需要从视点坐标系切到物体坐标系
+    Matrix4 modelMatrix;
+    modelMatrix.identity();
+    modelMatrix.translate(modelPosition[0], modelPosition[1], modelPosition[2]);
+    modelMatrix.rotateX(modelAngle[0]);
+    modelMatrix.rotateX(modelAngle[1]);
+    modelMatrix.rotateX(modelAngle[2]);
+    Matrix4 vm = matrix3rdView * modelMatrix;
+    glLoadMatrixf(vm.getTranspose());
+    
+    
     drawAxis(4);
     drawTeapot();
-    glPopMatrix();
+//    glPopMatrix();
 
     // draw the camera
-    glPushMatrix();
-    glTranslatef(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
-    glRotatef(cameraAngle[0], 1, 0, 0);
-    glRotatef(cameraAngle[1], 0, 1, 0);
-    glRotatef(cameraAngle[2], 0, 0, 1);
+//    glPushMatrix();
+//    glTranslatef(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
+//    glRotatef(cameraAngle[0], 1, 0, 0);
+//    glRotatef(cameraAngle[1], 0, 1, 0);
+//    glRotatef(cameraAngle[2], 0, 0, 1);
+    
+    modelMatrix.identity();
+    modelMatrix.translate(cameraPosition[0], cameraPosition[1], cameraPosition[2]);
+    modelMatrix.rotateX(cameraAngle[0]);
+    modelMatrix.rotateX(cameraAngle[1]);
+    modelMatrix.rotateX(cameraAngle[2]);
+    Matrix4 vm2 = matrix3rdView * modelMatrix;
+    glLoadMatrixf(vm2.getTranspose());
+    
     drawCamera();
     drawFrustum(FOV_Y, 1, 1, 10);
-    glPopMatrix();
+//    glPopMatrix();
 
     glPopMatrix();
 }
@@ -446,15 +480,15 @@ void ModelGL::drawAxis(float size)
     // draw axis
     glLineWidth(3);
     glBegin(GL_LINES);
-        glColor3f(1, 0, 0);
+        glColor3f(1, 0, 0);//red
         glVertex3f(0, 0, 0);
-        glVertex3f(size, 0, 0);
-        glColor3f(0, 1, 0);
+        glVertex3f(size, 0, 0);//x-
+        glColor3f(0, 1, 0);//green
         glVertex3f(0, 0, 0);
-        glVertex3f(0, size, 0);
-        glColor3f(0, 0, 1);
+        glVertex3f(0, size, 0);//y-
+        glColor3f(0, 0, 1);//blue
         glVertex3f(0, 0, 0);
-        glVertex3f(0, 0, size);
+        glVertex3f(0, 0, size);//z-
     glEnd();
     glLineWidth(1);
 
@@ -644,10 +678,12 @@ void ModelGL::updateModelMatrix()
 ///////////////////////////////////////////////////////////////////////////////
 void ModelGL::rotateCamera(int x, int y)
 {
-    cameraAngleY += (x - mouseX);
+    cameraAngleY += (x - mouseX);//表示向摄像机向拖放的逆方向转动角度
     cameraAngleX += (y - mouseY);
     mouseX = x;
     mouseY = y;
+    
+    update3rdViewMatrix();
 }
 
 
@@ -659,10 +695,24 @@ void ModelGL::zoomCamera(int y)
 {
     cameraDistance -= (y - mouseY) * 0.1f;
     mouseY = y;
+    update3rdViewMatrix();
 }
 void ModelGL::zoomCameraDelta(int delta)
 {
     cameraDistance -= delta;
+//    this->matrix3rdView.trans
+    update3rdViewMatrix();
+}
+
+void ModelGL::update3rdViewMatrix(){
+    this->matrix3rdView.identity();
+    this->matrix3rdView.translate(0, 0, -cameraDistance);
+    matrix3rdView.rotateX(cameraAngleX);    // pitch
+    matrix3rdView.rotateY(cameraAngleY);    // heading
+    
+//    glTranslatef(0, 0, -cameraDistance);
+//    glRotatef(cameraAngleX, 1, 0, 0); // pitch
+//    glRotatef(cameraAngleY, 0, 1, 0); // heading
 }
 
 
